@@ -1,0 +1,4 @@
+interface:
+  display_name: "Pi Desktop Feature Builder"
+  short_description: "Build complete local Pi Desktop feature apps"
+  default_prompt: "Use $pi-desktop-feature-builder to build a complete local feature for this workspace."

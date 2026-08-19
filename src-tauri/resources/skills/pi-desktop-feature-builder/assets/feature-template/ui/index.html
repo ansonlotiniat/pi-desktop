@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" href="data:," />
+    <title>Feature</title>
+    <style>
+      :root { color-scheme: dark; font-family: -apple-system, BlinkMacSystemFont, sans-serif; color: #eceeea; background: #0c0d0e; -webkit-font-smoothing: antialiased; }
+      * { box-sizing: border-box; }
+      body { margin: 0; min-height: 100vh; }
+      header { display: flex; min-height: 48px; align-items: center; justify-content: space-between; padding: 8px 14px; border-bottom: 1px solid rgba(236,238,234,.12); }
+      h1 { margin: 0; font-size: 15px; }
+      main { padding: 24px; }
+      button { min-height: 32px; padding: 0 12px; border: 1px solid rgba(236,238,234,.14); border-radius: 8px; background: #181a1b; color: inherit; font: inherit; cursor: pointer; }
+      pre { min-height: 160px; padding: 14px; border: 1px solid rgba(236,238,234,.12); border-radius: 8px; color: #c9ccc7; font: 13px/1.55 "SFMono-Regular", Menlo, monospace; white-space: pre-wrap; }
+      #error { color: #e49b96; }
+    </style>
+  </head>
+  <body>
+    <header><h1>Feature</h1><button id="refresh" type="button">Refresh</button></header>
+    <main><pre id="output">Loading</pre><div id="error" role="alert"></div></main>
+    <script>
+      const output = document.querySelector("#output");
+      const errorBox = document.querySelector("#error");
+      async function load() {
+        errorBox.textContent = "";
+        output.textContent = "Loading";
+        try {
+          const result = await window.piDesktop.service.request("feature.load");
+          output.textContent = JSON.stringify(result, null, 2);
+        } catch (error) {
+          output.textContent = "No data";
+          errorBox.textContent = error instanceof Error ? error.message : String(error);
+        }
+      }
+      document.querySelector("#refresh").addEventListener("click", load);
+      void load();
+    </script>
+  </body>
+</html>

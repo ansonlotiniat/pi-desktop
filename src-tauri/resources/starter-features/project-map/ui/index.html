@@ -1,0 +1,445 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Project Map</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+      font-synthesis: none;
+      font-optical-sizing: auto;
+      -webkit-font-smoothing: auto;
+      --bg: #0d0e0f;
+      --panel: #111213;
+      --panel-2: #171819;
+      --panel-3: #1d1f20;
+      --line: rgba(236, 236, 234, .09);
+      --line-strong: rgba(236, 236, 234, .16);
+      --text: #ececea;
+      --soft: #caccC7;
+      --muted: #9da09a;
+      --faint: #757872;
+      --accent: #8bc493;
+      --accent-dim: rgba(139, 196, 147, .12);
+      --blue: #91b8d8;
+      --yellow: #d1b677;
+      --red: #db8983;
+    }
+    * { box-sizing: border-box; }
+    html, body, #app { width: 100%; height: 100%; margin: 0; overflow: hidden; }
+    body { background: var(--bg); color: var(--text); font-size: 14px; }
+    button, input { font: inherit; }
+    button { color: inherit; cursor: pointer; }
+    button:disabled { cursor: default; opacity: .5; }
+    button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .app { display: grid; height: 100%; grid-template-rows: 55px minmax(0, 1fr); }
+    .topbar {
+      display: flex; align-items: center; justify-content: space-between; gap: 16px;
+      padding: 0 18px; border-bottom: 1px solid var(--line); background: var(--bg);
+    }
+    .identity, .identity-copy, .top-actions { min-width: 0; }
+    .identity { display: flex; align-items: center; gap: 11px; }
+    .mark {
+      display: grid; width: 29px; height: 29px; flex: 0 0 auto; place-items: center;
+      border-radius: 8px; background: var(--accent-dim); color: var(--accent); font-size: 16px; font-weight: 760;
+    }
+    .identity strong { display: block; font-size: 14px; font-weight: 690; }
+    .identity span { display: block; overflow: hidden; color: var(--muted); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+    .top-actions { display: flex; align-items: center; justify-content: flex-end; gap: 7px; }
+    .metric { min-width: 54px; color: var(--muted); font-size: 11px; text-align: right; }
+    .metric strong { display: block; color: var(--soft); font-size: 13px; font-variant-numeric: tabular-nums; }
+    .button {
+      min-height: 32px; padding: 0 12px; border: 1px solid var(--line-strong); border-radius: 999px;
+      background: transparent; color: var(--soft); font-size: 12px; font-weight: 660; white-space: nowrap;
+    }
+    .button:hover:not(:disabled) { background: var(--panel-3); color: var(--text); }
+    .button.primary { border-color: transparent; background: #dce0da; color: #151716; }
+    .button.primary:hover:not(:disabled) { background: #f0f2ee; }
+    .workspace { display: grid; min-height: 0; grid-template-columns: 288px 350px minmax(0, 1fr); }
+    .pane { min-width: 0; min-height: 0; overflow: hidden; border-right: 1px solid var(--line); }
+    .pane:last-child { border-right: 0; }
+    .pane-head {
+      display: flex; min-height: 49px; align-items: center; justify-content: space-between; gap: 9px;
+      padding: 9px 11px; border-bottom: 1px solid var(--line); background: var(--panel);
+    }
+    .pane-head strong { font-size: 13px; font-weight: 690; }
+    .count { color: var(--faint); font-size: 12px; font-variant-numeric: tabular-nums; }
+    .search {
+      width: 100%; height: 32px; padding: 0 10px; border: 1px solid var(--line); border-radius: 8px;
+      outline: 0; background: var(--panel-2); color: var(--text); font-size: 12.5px;
+    }
+    .search::placeholder { color: var(--faint); }
+    .scroll { height: calc(100% - 49px); overflow: auto; scrollbar-color: rgba(190, 194, 186, .22) transparent; }
+    .tree { padding: 6px; }
+    .tree-group + .tree-group { margin-top: 2px; }
+    .module-row, .file-row, .map-card {
+      width: 100%; border: 0; border-radius: 8px; background: transparent; text-align: left;
+    }
+    .module-row {
+      display: grid; min-height: 35px; grid-template-columns: 17px minmax(0, 1fr) auto;
+      align-items: center; gap: 6px; padding: 0 9px; color: var(--soft); font-size: 12.5px; font-weight: 650;
+    }
+    .module-row:hover, .file-row:hover, .map-card:hover { background: rgba(236, 236, 234, .035); }
+    .module-row.is-selected, .file-row.is-selected, .map-card.is-selected {
+      background: var(--accent-dim); box-shadow: inset 3px 0 0 rgba(139, 196, 147, .84);
+    }
+    .chevron { color: var(--faint); font-size: 14px; transition: transform 140ms ease; }
+    .tree-group.is-open .chevron { transform: rotate(90deg); }
+    .module-count { color: var(--faint); font-size: 11px; font-variant-numeric: tabular-nums; }
+    .file-list { display: none; padding-left: 15px; }
+    .tree-group.is-open .file-list { display: block; }
+    .file-row {
+      display: grid; min-height: 31px; grid-template-columns: 8px minmax(0, 1fr); align-items: center;
+      gap: 7px; padding: 0 9px; color: var(--muted); font: 520 12px/1.4 "SF Mono", Menlo, monospace;
+    }
+    .file-dot { width: 6px; height: 6px; border-radius: 2px; background: var(--faint); }
+    .file-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .map-pane { background: var(--panel); }
+    .map-scroll { padding: 10px; }
+    .map-summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 10px; }
+    .summary-card { padding: 10px; border: 1px solid var(--line); border-radius: 9px; background: var(--panel-2); }
+    .summary-card strong { display: block; margin-bottom: 3px; font-size: 16px; font-weight: 690; font-variant-numeric: tabular-nums; }
+    .summary-card span { color: var(--muted); font-size: 11px; }
+    .section-label {
+      margin: 17px 7px 6px; color: var(--faint); font-size: 10.5px; font-weight: 720;
+      letter-spacing: .07em; text-transform: uppercase;
+    }
+    .map-list { display: grid; gap: 4px; }
+    .map-card { display: grid; gap: 7px; padding: 10px; border: 1px solid transparent; }
+    .map-title { display: flex; min-width: 0; align-items: center; justify-content: space-between; gap: 8px; }
+    .map-title strong { overflow: hidden; color: var(--soft); font-size: 12.5px; text-overflow: ellipsis; white-space: nowrap; }
+    .map-title span { color: var(--faint); font-size: 11px; font-variant-numeric: tabular-nums; }
+    .bar { height: 3px; overflow: hidden; border-radius: 99px; background: rgba(236, 236, 234, .07); }
+    .bar span { display: block; height: 100%; border-radius: inherit; background: var(--accent); }
+    .chips { display: flex; min-width: 0; flex-wrap: wrap; gap: 4px; }
+    .chip {
+      max-width: 100%; overflow: hidden; padding: 2px 6px; border: 1px solid var(--line); border-radius: 999px;
+      color: var(--muted); font-size: 10.5px; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .chip.edge { color: var(--blue); }
+    .inspector { display: grid; min-height: 0; grid-template-rows: auto minmax(0, 1fr); background: var(--bg); }
+    .inspector-head { min-height: 87px; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+    .inspector-head h1 {
+      margin: 0 0 7px; overflow: hidden; color: var(--text); font-size: 16px; font-weight: 690;
+      line-height: 1.35; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .meta { display: flex; flex-wrap: wrap; gap: 6px 13px; color: var(--muted); font-size: 12px; }
+    .meta code { color: var(--blue); font: 550 12px "SF Mono", Menlo, monospace; }
+    .inspector-scroll { min-height: 0; overflow: auto; scrollbar-color: rgba(190, 194, 186, .22) transparent; }
+    .overview { display: grid; gap: 18px; padding: 18px; }
+    .overview-section h2 { margin: 0 0 8px; color: var(--soft); font-size: 12px; font-weight: 690; }
+    .language-row { display: grid; grid-template-columns: 100px minmax(80px, 1fr) 52px; align-items: center; gap: 10px; min-height: 27px; color: var(--muted); font-size: 12px; }
+    .language-row > span:last-child { text-align: right; font-variant-numeric: tabular-nums; }
+    .entry-list, .relation-list { display: grid; gap: 4px; }
+    .entry {
+      display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 31px;
+      padding: 6px 8px; border: 1px solid var(--line); border-radius: 7px; background: var(--panel); color: var(--soft);
+    }
+    button.entry { width: 100%; text-align: left; }
+    .entry:hover { background: var(--panel-2); }
+    .entry code { overflow: hidden; font: 520 12px "SF Mono", Menlo, monospace; text-overflow: ellipsis; white-space: nowrap; }
+    .entry span { flex: 0 0 auto; color: var(--faint); font-size: 11px; }
+    .source { min-width: 680px; padding: 8px 0 30px; font: 520 12.5px/1.55 "SF Mono", Menlo, monospace; }
+    .source-line { display: grid; min-height: 20px; grid-template-columns: 58px minmax(0, 1fr); }
+    .source-line:hover { background: rgba(236, 236, 234, .025); }
+    .source-line .ln { padding-right: 12px; color: #61645f; text-align: right; user-select: none; }
+    .source-line .code { padding: 0 16px; color: #d2d4cf; white-space: pre; }
+    .notice { margin: 12px 16px 0; padding: 9px 11px; border: 1px solid rgba(209, 182, 119, .24); border-radius: 8px; background: rgba(209, 182, 119, .07); color: var(--yellow); font-size: 12px; }
+    .state {
+      display: grid; height: 100%; min-height: 220px; place-content: center; gap: 8px; padding: 26px;
+      color: var(--muted); text-align: center;
+    }
+    .state strong { color: var(--soft); font-size: 15px; }
+    .state p { max-width: 430px; margin: 0; line-height: 1.6; }
+    .state .button { justify-self: center; margin-top: 5px; }
+    .skeleton { display: grid; gap: 8px; padding: 12px; }
+    .skeleton span { height: 43px; border-radius: 8px; background: var(--panel-2); animation: breathe 1.25s ease-in-out infinite alternate; }
+    @keyframes breathe { from { opacity: .45; } to { opacity: 1; } }
+    @media (max-width: 1000px) {
+      .workspace { grid-template-columns: 252px 300px minmax(0, 1fr); }
+      .metric { display: none; }
+    }
+    @media (max-width: 760px) {
+      .topbar { padding: 0 12px; }
+      .identity span, .button.refresh { display: none; }
+      .workspace { grid-template-columns: 220px minmax(0, 1fr); grid-template-rows: 42% 58%; }
+      .tree-pane { grid-row: 1 / 3; }
+      .map-pane { border-right: 0; border-bottom: 1px solid var(--line); }
+      .inspector { grid-column: 2; }
+      .inspector-head { display: none; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .skeleton span { animation: none; }
+      .chevron { transition: none; }
+    }
+  </style>
+</head>
+<body>
+  <main id="app" class="app">
+    <header class="topbar">
+      <div class="identity">
+        <span class="mark" aria-hidden="true">⌘</span>
+        <div class="identity-copy"><strong>Project Map</strong><span id="project-label">Scanning workspace...</span></div>
+      </div>
+      <div class="top-actions">
+        <span class="metric"><strong id="metric-files">—</strong>files</span>
+        <span class="metric"><strong id="metric-modules">—</strong>modules</span>
+        <span class="metric"><strong id="metric-lines">—</strong>lines</span>
+        <button id="refresh" class="button refresh" type="button">Rescan</button>
+        <button id="ask-pi" class="button primary" type="button" disabled>Ask Pi</button>
+      </div>
+    </header>
+    <section class="workspace" aria-label="Project map workspace">
+      <aside class="pane tree-pane">
+        <div class="pane-head"><input id="search" class="search" type="search" placeholder="Filter files" aria-label="Filter project files" /></div>
+        <div id="tree-scroll" class="scroll"><div class="skeleton"><span></span><span></span><span></span></div></div>
+      </aside>
+      <section class="pane map-pane">
+        <div class="pane-head"><strong>Modules</strong><span id="module-count" class="count">0</span></div>
+        <div id="map-scroll" class="scroll map-scroll"><div class="skeleton"><span></span><span></span><span></span></div></div>
+      </section>
+      <section class="pane inspector">
+        <div id="inspector-head" class="inspector-head"><h1>Workspace overview</h1><div class="meta"><span>Select a module or file to inspect it.</span></div></div>
+        <div id="inspector-scroll" class="inspector-scroll"><div class="state"><span>Scanning project structure…</span></div></div>
+      </section>
+    </section>
+  </main>
+  <script>
+    const state = {
+      snapshot: null,
+      query: "",
+      collapsed: new Set(),
+      selectedModule: null,
+      selectedPath: null,
+      file: null,
+      loading: true,
+      loadingFile: false,
+      error: null,
+    };
+
+    const $ = (selector) => document.querySelector(selector);
+    const escapeHtml = (value) => String(value ?? "")
+      .replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;").replaceAll("'", "&#039;");
+    const number = (value) => new Intl.NumberFormat(undefined, { notation: value > 9999 ? "compact" : "standard", maximumFractionDigits: 1 }).format(value || 0);
+    const size = (value) => {
+      if (!value) return "0 B";
+      const units = ["B", "KB", "MB", "GB"];
+      const index = Math.min(units.length - 1, Math.floor(Math.log(value) / Math.log(1024)));
+      return `${(value / (1024 ** index)).toFixed(index ? 1 : 0)} ${units[index]}`;
+    };
+    const statePanel = (title, message, retry = false) => `<div class="state"><strong>${escapeHtml(title)}</strong><p>${escapeHtml(message)}</p>${retry ? '<button class="button" data-action="retry" type="button">Try again</button>' : ""}</div>`;
+
+    function moduleEdges(name, direction = "out") {
+      const edges = state.snapshot?.edges || [];
+      return edges.filter((edge) => direction === "out" ? edge.from === name : edge.to === name);
+    }
+
+    function renderTree() {
+      const root = $("#tree-scroll");
+      if (state.loading) {
+        root.innerHTML = '<div class="skeleton"><span></span><span></span><span></span></div>';
+        return;
+      }
+      if (state.error) {
+        root.innerHTML = statePanel("Project scan failed", state.error, true);
+        return;
+      }
+      const query = state.query.trim().toLowerCase();
+      const modules = (state.snapshot?.modules || []).map((module) => ({
+        ...module,
+        matchingFiles: (state.snapshot.files || []).filter((file) =>
+          file.module === module.name && (!query || file.path.toLowerCase().includes(query) || file.language.toLowerCase().includes(query)),
+        ),
+      })).filter((module) => !query || module.name.toLowerCase().includes(query) || module.matchingFiles.length);
+      if (!modules.length) {
+        root.innerHTML = statePanel("No matching files", "Try a different file, module, or language name.");
+        return;
+      }
+      root.innerHTML = `<div class="tree">${modules.map((module) => {
+        const open = query || !state.collapsed.has(module.name);
+        return `<section class="tree-group ${open ? "is-open" : ""}" data-group="${escapeHtml(module.name)}">
+          <button class="module-row ${state.selectedModule === module.name && !state.selectedPath ? "is-selected" : ""}" data-module="${escapeHtml(module.name)}" type="button">
+            <span class="chevron">›</span><span>${escapeHtml(module.name)}</span><span class="module-count">${module.matchingFiles.length}</span>
+          </button>
+          <div class="file-list">${module.matchingFiles.map((file) => `<button class="file-row ${state.selectedPath === file.path ? "is-selected" : ""}" data-path="${escapeHtml(file.path)}" type="button" title="${escapeHtml(file.path)}"><span class="file-dot"></span><span class="file-name">${escapeHtml(module.name === "(root)" ? file.path : file.path.slice(module.name.length + 1))}</span></button>`).join("")}</div>
+        </section>`;
+      }).join("")}</div>`;
+    }
+
+    function renderMap() {
+      const root = $("#map-scroll");
+      const snapshot = state.snapshot;
+      if (state.loading) {
+        root.innerHTML = '<div class="skeleton"><span></span><span></span><span></span></div>';
+        return;
+      }
+      if (!snapshot) {
+        root.innerHTML = statePanel("No project map", state.error || "The workspace could not be scanned.");
+        return;
+      }
+      const maximum = Math.max(...snapshot.modules.map((module) => module.files), 1);
+      root.innerHTML = `${snapshot.scan.truncated ? `<div class="notice">Showing the first ${number(snapshot.scan.limit)} files. Narrow the workspace for a complete map.</div>` : ""}
+        <div class="map-summary">
+          <div class="summary-card"><strong>${number(snapshot.totals.files)}</strong><span>files</span></div>
+          <div class="summary-card"><strong>${number(snapshot.languages.length)}</strong><span>languages</span></div>
+          <div class="summary-card"><strong>${number(snapshot.edges.length)}</strong><span>links</span></div>
+        </div>
+        <div class="section-label">Structure</div>
+        <div class="map-list">${snapshot.modules.map((module) => {
+          const outgoing = moduleEdges(module.name).slice(0, 3);
+          return `<button class="map-card ${state.selectedModule === module.name && !state.selectedPath ? "is-selected" : ""}" data-map-module="${escapeHtml(module.name)}" type="button">
+            <span class="map-title"><strong>${escapeHtml(module.name)}</strong><span>${module.files} files</span></span>
+            <span class="bar"><span style="width:${Math.max(4, Math.round(module.files / maximum * 100))}%"></span></span>
+            <span class="chips">${module.languages.slice(0, 2).map((language) => `<span class="chip">${escapeHtml(language.name)} ${language.files}</span>`).join("")}${outgoing.map((edge) => `<span class="chip edge">→ ${escapeHtml(edge.to)}</span>`).join("")}</span>
+          </button>`;
+        }).join("")}</div>`;
+    }
+
+    function renderInspectorHead(title, meta) {
+      $("#inspector-head").innerHTML = `<h1 title="${escapeHtml(title)}">${escapeHtml(title)}</h1><div class="meta">${meta}</div>`;
+    }
+
+    function renderProjectOverview() {
+      const snapshot = state.snapshot;
+      if (!snapshot) return;
+      renderInspectorHead(snapshot.workspace.name, `<code>${escapeHtml(snapshot.repository?.branch || "No Git repository")}</code><span>${escapeHtml(snapshot.workspace.path)}</span><span>${snapshot.scan.source === "git" ? "Git-aware scan" : "Filesystem scan"}</span>`);
+      const maxLanguage = Math.max(...snapshot.languages.map((item) => item.files), 1);
+      $("#inspector-scroll").innerHTML = `<div class="overview">
+        <section class="overview-section"><h2>Language profile</h2>${snapshot.languages.slice(0, 12).map((language) => `<div class="language-row"><span>${escapeHtml(language.name)}</span><span class="bar"><span style="width:${Math.max(3, Math.round(language.files / maxLanguage * 100))}%"></span></span><span>${language.files}</span></div>`).join("")}</section>
+        <section class="overview-section"><h2>Likely entry points</h2><div class="entry-list">${snapshot.entryPoints.length ? snapshot.entryPoints.map((entry) => `<button class="entry" data-inspector-path="${escapeHtml(entry.path)}" type="button"><code>${escapeHtml(entry.path)}</code><span>${escapeHtml(entry.language)}</span></button>`).join("") : '<div class="entry"><code>No conventional entry point detected</code></div>'}</div></section>
+      </div>`;
+    }
+
+    function renderModuleOverview(moduleName) {
+      const snapshot = state.snapshot;
+      const module = snapshot?.modules.find((candidate) => candidate.name === moduleName);
+      if (!module) { renderProjectOverview(); return; }
+      const incoming = moduleEdges(module.name, "in");
+      const outgoing = moduleEdges(module.name, "out");
+      const files = snapshot.files.filter((file) => file.module === module.name);
+      renderInspectorHead(module.name, `<span>${module.files} files</span><span>${size(module.bytes)}</span><span>${number(module.lines)} counted lines</span><span>${module.languages.map((item) => escapeHtml(item.name)).slice(0, 3).join(" · ")}</span>`);
+      $("#inspector-scroll").innerHTML = `<div class="overview">
+        <section class="overview-section"><h2>Module relationships</h2><div class="relation-list">${[
+          ...outgoing.map((edge) => `<div class="entry"><code>${escapeHtml(module.name)} → ${escapeHtml(edge.to)}</code><span>${edge.imports} imports</span></div>`),
+          ...incoming.map((edge) => `<div class="entry"><code>${escapeHtml(edge.from)} → ${escapeHtml(module.name)}</code><span>${edge.imports} imports</span></div>`),
+        ].join("") || '<div class="entry"><code>No cross-module imports inferred</code></div>'}</div></section>
+        <section class="overview-section"><h2>Files</h2><div class="entry-list">${files.slice(0, 80).map((file) => `<button class="entry" data-inspector-path="${escapeHtml(file.path)}" type="button"><code>${escapeHtml(file.path)}</code><span>${escapeHtml(file.language)}</span></button>`).join("")}</div></section>
+      </div>`;
+    }
+
+    function renderFile() {
+      const root = $("#inspector-scroll");
+      if (state.loadingFile) {
+        root.innerHTML = '<div class="skeleton"><span></span><span></span><span></span><span></span></div>';
+        return;
+      }
+      const file = state.file;
+      if (!file) { renderModuleOverview(state.selectedModule); return; }
+      renderInspectorHead(file.path, `<span>${escapeHtml(file.language)}</span><span>${size(file.size)}</span>${Number.isInteger(file.lines) ? `<span>${number(file.lines)} lines</span>` : ""}${file.truncated ? '<span>Preview truncated</span>' : ""}`);
+      if (file.binary) {
+        root.innerHTML = statePanel("Binary file", "Project Map can show metadata, but not a text preview for this file.");
+        return;
+      }
+      const allLines = String(file.content || "").split("\n");
+      const visibleLines = allLines.slice(0, 2_500);
+      const source = visibleLines.map((line, index) => `<div class="source-line"><span class="ln">${index + 1}</span><span class="code">${escapeHtml(line || " ")}</span></div>`).join("");
+      root.innerHTML = `${file.imports?.length ? `<div class="notice">Imports: ${file.imports.slice(0, 8).map(escapeHtml).join(" · ")}</div>` : ""}<div class="source">${source}</div>${allLines.length > visibleLines.length ? '<div class="notice">Source preview stopped after 2,500 lines.</div>' : ""}`;
+    }
+
+    async function loadProject() {
+      state.loading = true;
+      state.error = null;
+      state.snapshot = null;
+      state.selectedModule = null;
+      state.selectedPath = null;
+      state.file = null;
+      $("#ask-pi").disabled = true;
+      renderTree(); renderMap();
+      $("#inspector-scroll").innerHTML = '<div class="state"><span>Scanning project structure…</span></div>';
+      try {
+        state.snapshot = await window.piDesktop.service.request("project.scan");
+        const modules = state.snapshot.modules || [];
+        state.collapsed = new Set(modules.map((module) => module.name));
+        if (modules[0]) state.collapsed.delete(modules[0].name);
+        $("#project-label").textContent = `${state.snapshot.workspace.name}${state.snapshot.repository?.branch ? ` · ${state.snapshot.repository.branch}` : ""}`;
+        $("#metric-files").textContent = number(state.snapshot.totals.files);
+        $("#metric-modules").textContent = number(modules.length);
+        $("#metric-lines").textContent = number(state.snapshot.totals.lines);
+        $("#module-count").textContent = String(modules.length);
+        $("#ask-pi").disabled = false;
+      } catch (error) {
+        state.error = error instanceof Error ? error.message : String(error);
+        $("#project-label").textContent = "Scan unavailable";
+      } finally {
+        state.loading = false;
+        renderTree(); renderMap();
+        if (state.snapshot) renderProjectOverview();
+        else $("#inspector-scroll").innerHTML = statePanel("Project scan failed", state.error || "Unknown error", true);
+      }
+    }
+
+    function selectModule(name, toggleCollapsed = false) {
+      state.selectedModule = name;
+      state.selectedPath = null;
+      state.file = null;
+      if (toggleCollapsed && !state.collapsed.has(name)) state.collapsed.add(name);
+      else state.collapsed.delete(name);
+      renderTree(); renderMap(); renderModuleOverview(name);
+    }
+
+    async function selectFile(path) {
+      if (state.loadingFile || path === state.selectedPath) return;
+      const summary = state.snapshot?.files.find((file) => file.path === path);
+      state.selectedPath = path;
+      state.selectedModule = summary?.module || null;
+      state.file = null;
+      state.loadingFile = true;
+      renderTree(); renderMap(); renderFile();
+      try {
+        state.file = await window.piDesktop.service.request("project.file", { path });
+      } catch (error) {
+        $("#inspector-scroll").innerHTML = statePanel("File preview unavailable", error instanceof Error ? error.message : String(error));
+      } finally {
+        state.loadingFile = false;
+        if (state.file) renderFile();
+      }
+    }
+
+    $("#search").addEventListener("input", (event) => { state.query = event.target.value; renderTree(); });
+    $("#refresh").addEventListener("click", loadProject);
+    $("#tree-scroll").addEventListener("click", (event) => {
+      if (event.target.closest("[data-action=retry]")) { loadProject(); return; }
+      const file = event.target.closest("[data-path]");
+      if (file) { selectFile(file.dataset.path); return; }
+      const module = event.target.closest("[data-module]");
+      if (module) selectModule(module.dataset.module, true);
+    });
+    $("#map-scroll").addEventListener("click", (event) => {
+      const module = event.target.closest("[data-map-module]");
+      if (module) selectModule(module.dataset.mapModule);
+    });
+    $("#inspector-scroll").addEventListener("click", (event) => {
+      if (event.target.closest("[data-action=retry]")) { loadProject(); return; }
+      const file = event.target.closest("[data-inspector-path]");
+      if (file) selectFile(file.dataset.inspectorPath);
+    });
+    $("#ask-pi").addEventListener("click", async () => {
+      if (!state.snapshot) return;
+      const target = state.selectedPath
+        ? `the file ${state.selectedPath}`
+        : state.selectedModule
+          ? `the ${state.selectedModule} module`
+          : "this project's architecture";
+      const prompt = `Explain ${target} in the current workspace. Inspect the source and relevant references with Pi's native tools. Describe responsibilities, important dependencies, and likely change impact. Do not modify files unless I explicitly ask.`;
+      $("#ask-pi").disabled = true;
+      try { await window.piDesktop.pi.prompt(prompt); await window.piDesktop.navigate("chat"); }
+      finally { $("#ask-pi").disabled = false; }
+    });
+
+    loadProject();
+  </script>
+</body>
+</html>

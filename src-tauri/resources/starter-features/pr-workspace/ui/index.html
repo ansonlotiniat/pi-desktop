@@ -1,0 +1,417 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>PR Workspace</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+      font-synthesis: none;
+      font-optical-sizing: auto;
+      -webkit-font-smoothing: auto;
+      --bg: #0d0e0f;
+      --panel: #111213;
+      --panel-2: #171819;
+      --panel-3: #1d1f20;
+      --line: rgba(236, 236, 234, .09);
+      --line-strong: rgba(236, 236, 234, .16);
+      --text: #ececea;
+      --soft: #caccc7;
+      --muted: #9da09a;
+      --faint: #797c77;
+      --accent: #8bc493;
+      --accent-dim: rgba(139, 196, 147, .12);
+      --red: #db8983;
+      --yellow: #d1b677;
+      --blue: #91b8d8;
+      --radius: 10px;
+    }
+    * { box-sizing: border-box; }
+    html, body, #app { width: 100%; height: 100%; margin: 0; overflow: hidden; }
+    body { background: var(--bg); color: var(--text); font-size: 14px; }
+    button, input { font: inherit; }
+    button { color: inherit; cursor: pointer; }
+    button:disabled { cursor: default; opacity: .5; }
+    button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .app { display: grid; height: 100%; grid-template-rows: 54px minmax(0, 1fr); }
+    .topbar {
+      display: flex; align-items: center; justify-content: space-between; gap: 16px;
+      padding: 0 18px; border-bottom: 1px solid var(--line); background: var(--bg);
+    }
+    .identity { display: flex; min-width: 0; align-items: center; gap: 11px; }
+    .mark {
+      display: grid; width: 29px; height: 29px; place-items: center; border-radius: 8px;
+      background: var(--accent-dim); color: var(--accent); font-size: 17px; font-weight: 700;
+    }
+    .identity div { min-width: 0; }
+    .identity strong { display: block; font-size: 14px; font-weight: 680; }
+    .identity span {
+      display: block; max-width: 46vw; overflow: hidden; color: var(--muted); font-size: 12px;
+      text-overflow: ellipsis; white-space: nowrap;
+    }
+    .top-actions { display: flex; align-items: center; gap: 7px; }
+    .button {
+      min-height: 32px; padding: 0 12px; border: 1px solid var(--line-strong); border-radius: 999px;
+      background: transparent; color: var(--soft); font-size: 12px; font-weight: 650; white-space: nowrap;
+    }
+    .button:hover:not(:disabled) { background: var(--panel-3); color: var(--text); }
+    .button.primary { border-color: transparent; background: #dce0da; color: #151716; }
+    .button.primary:hover:not(:disabled) { background: #f0f2ee; }
+    .workspace { display: grid; min-height: 0; grid-template-columns: 286px 246px minmax(0, 1fr); }
+    .pane { min-width: 0; min-height: 0; overflow: hidden; border-right: 1px solid var(--line); }
+    .pane:last-child { border-right: 0; }
+    .pane-head {
+      display: flex; min-height: 49px; align-items: center; justify-content: space-between; gap: 8px;
+      padding: 8px 11px; border-bottom: 1px solid var(--line); background: var(--panel);
+    }
+    .pane-head strong { font-size: 13px; font-weight: 680; }
+    .count { color: var(--faint); font-size: 12px; font-variant-numeric: tabular-nums; }
+    .filters { display: flex; gap: 3px; padding: 4px; border-bottom: 1px solid var(--line); background: var(--panel); }
+    .filter {
+      min-height: 27px; flex: 1; padding: 0 6px; border: 0; border-radius: 7px;
+      background: transparent; color: var(--muted); font-size: 11px; font-weight: 650;
+    }
+    .filter.is-active { background: var(--panel-3); box-shadow: inset 0 0 0 1px var(--line); color: var(--text); }
+    .search {
+      width: 100%; height: 31px; padding: 0 10px; border: 1px solid var(--line); border-radius: 8px;
+      outline: 0; background: var(--panel-2); color: var(--text); font-size: 12px;
+    }
+    .search::placeholder { color: var(--faint); }
+    .scroll { height: 100%; overflow: auto; scrollbar-color: rgba(190, 194, 186, .22) transparent; }
+    .pr-scroll { height: calc(100% - 89px); }
+    .pr-list, .file-list { display: grid; gap: 2px; padding: 6px; }
+    .pr-row, .file-row {
+      width: 100%; border: 0; border-radius: 8px; background: transparent; text-align: left;
+    }
+    .pr-row { display: grid; gap: 6px; padding: 10px; }
+    .pr-row:hover, .file-row:hover { background: rgba(236, 236, 234, .035); }
+    .pr-row.is-active, .file-row.is-active {
+      background: var(--accent-dim); box-shadow: inset 3px 0 0 rgba(139, 196, 147, .82);
+    }
+    .pr-title { display: -webkit-box; overflow: hidden; color: var(--soft); font-size: 13px; font-weight: 620; line-height: 1.4; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+    .pr-meta { display: flex; align-items: center; gap: 7px; color: var(--faint); font-size: 11px; }
+    .pr-meta span:first-child { color: var(--muted); font-variant-numeric: tabular-nums; }
+    .pr-state { margin-left: auto; }
+    .state-draft { color: var(--muted); }
+    .state-failed { color: var(--red); }
+    .state-pending { color: var(--yellow); }
+    .state-passed { color: var(--accent); }
+    .file-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; padding: 8px 10px; }
+    .file-path { overflow: hidden; color: var(--soft); font: 520 12px/1.45 "SF Mono", Menlo, monospace; text-overflow: ellipsis; white-space: nowrap; }
+    .file-stat { display: flex; gap: 5px; font: 600 11px/1.45 "SF Mono", Menlo, monospace; }
+    .add { color: var(--accent); } .del { color: var(--red); }
+    .detail-pane { display: grid; grid-template-rows: auto minmax(0, 1fr); background: var(--bg); }
+    .detail-head { min-height: 90px; padding: 12px 15px; border-bottom: 1px solid var(--line); }
+    .detail-head h1 { margin: 0 0 7px; color: var(--text); font-size: 16px; font-weight: 680; line-height: 1.35; }
+    .detail-meta { display: flex; flex-wrap: wrap; gap: 6px 13px; color: var(--muted); font-size: 12px; }
+    .detail-meta code { color: var(--blue); font: 550 12px "SF Mono", Menlo, monospace; }
+    .checks { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 10px; }
+    .check {
+      padding: 3px 7px; border: 1px solid var(--line); border-radius: 999px;
+      color: var(--muted); background: var(--panel); font-size: 11px; font-weight: 620;
+    }
+    .check.failed { border-color: rgba(219, 137, 131, .28); color: var(--red); }
+    .check.pending { border-color: rgba(209, 182, 119, .26); color: var(--yellow); }
+    .check.passed { border-color: rgba(139, 196, 147, .24); color: var(--accent); }
+    .diff-scroll { min-height: 0; overflow: auto; background: #0f1011; scrollbar-color: rgba(190, 194, 186, .22) transparent; }
+    .diff-empty, .state {
+      display: grid; height: 100%; min-height: 220px; place-content: center; gap: 8px; padding: 24px;
+      color: var(--muted); text-align: center;
+    }
+    .state strong { color: var(--soft); font-size: 15px; }
+    .state p { max-width: 430px; margin: 0; line-height: 1.6; }
+    .state .button { justify-self: center; margin-top: 6px; }
+    .diff { min-width: 720px; padding: 8px 0 30px; font: 520 12px/1.55 "SF Mono", Menlo, monospace; }
+    .diff-line { display: grid; min-height: 19px; grid-template-columns: 48px 48px minmax(0, 1fr); }
+    .diff-line .ln { padding-right: 9px; color: #61645f; text-align: right; user-select: none; }
+    .diff-line .code { padding: 0 14px; white-space: pre; }
+    .diff-line.added { background: rgba(75, 139, 85, .13); color: #c9e6ce; }
+    .diff-line.deleted { background: rgba(166, 75, 70, .13); color: #e8c0bd; }
+    .diff-line.hunk { margin: 7px 0; background: rgba(70, 112, 145, .14); color: #a9c9e1; }
+    .diff-line.meta { color: #8f928c; }
+    .skeleton { display: grid; gap: 8px; padding: 12px; }
+    .skeleton span { height: 50px; border-radius: 8px; background: var(--panel-2); animation: breathe 1.25s ease-in-out infinite alternate; }
+    @keyframes breathe { from { opacity: .45; } to { opacity: 1; } }
+    @media (max-width: 980px) {
+      .workspace { grid-template-columns: 245px minmax(0, 1fr); grid-template-rows: 42% 58%; }
+      .pr-pane { grid-row: 1 / 3; }
+      .files-pane { border-right: 0; border-bottom: 1px solid var(--line); }
+      .detail-pane { grid-column: 2; }
+      .detail-head { display: none; }
+    }
+    @media (max-width: 700px) {
+      .topbar { padding: 0 12px; }
+      .identity span, .button.open-github { display: none; }
+      .workspace { grid-template-columns: 210px minmax(0, 1fr); grid-template-rows: 38% 62%; }
+      .filters { overflow-x: auto; }
+      .filter { min-width: 72px; }
+      .file-path { font-size: 11px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .skeleton span { animation: none; }
+    }
+  </style>
+</head>
+<body>
+  <main id="app" class="app">
+    <header class="topbar">
+      <div class="identity">
+        <span class="mark" aria-hidden="true">↗</span>
+        <div><strong>PR Workspace</strong><span id="repo-label">Checking GitHub CLI...</span></div>
+      </div>
+      <div class="top-actions">
+        <button id="refresh" class="button" type="button">Refresh</button>
+        <button id="open-github" class="button open-github" type="button" disabled>Open on GitHub</button>
+        <button id="ask-pi" class="button primary" type="button" disabled>Ask Pi to review</button>
+      </div>
+    </header>
+    <section id="workspace" class="workspace" aria-label="Pull request workspace">
+      <aside class="pane pr-pane">
+        <div class="pane-head"><input id="search" class="search" type="search" placeholder="Filter pull requests" aria-label="Filter pull requests" /></div>
+        <div class="filters" aria-label="Pull request filter">
+          <button class="filter is-active" data-filter="open" type="button">Open</button>
+          <button class="filter" data-filter="review-requested" type="button">For review</button>
+          <button class="filter" data-filter="mine" type="button">Mine</button>
+        </div>
+        <div id="pr-scroll" class="scroll pr-scroll"><div class="skeleton"><span></span><span></span><span></span></div></div>
+      </aside>
+      <aside class="pane files-pane">
+        <div class="pane-head"><strong>Changed files</strong><span id="file-count" class="count">0</span></div>
+        <div id="file-scroll" class="scroll"><div class="state"><span>Select a pull request</span></div></div>
+      </aside>
+      <section class="pane detail-pane">
+        <div id="detail-head" class="detail-head"><h1>No pull request selected</h1><div class="detail-meta"><span>Choose a pull request to inspect its patch.</span></div></div>
+        <div id="diff-scroll" class="diff-scroll"><div class="diff-empty">Select a changed file</div></div>
+      </section>
+    </section>
+  </main>
+  <script>
+    const state = {
+      environment: null,
+      filter: "open",
+      query: "",
+      pullRequests: [],
+      selectedNumber: null,
+      detail: null,
+      selectedPath: null,
+      loadingList: false,
+      loadingDetail: false,
+      loadingPatch: false,
+      listError: null,
+      detailError: null,
+    };
+
+    const $ = (selector) => document.querySelector(selector);
+    const escapeHtml = (value) => String(value ?? "")
+      .replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;").replaceAll("'", "&#039;");
+    const relativeTime = (value) => {
+      const time = Date.parse(value || "");
+      if (!Number.isFinite(time)) return "";
+      const minutes = Math.max(1, Math.round((Date.now() - time) / 60000));
+      if (minutes < 60) return `${minutes}m`;
+      const hours = Math.round(minutes / 60);
+      if (hours < 48) return `${hours}h`;
+      return `${Math.round(hours / 24)}d`;
+    };
+    const checkState = (summary = {}) => summary.failed > 0 ? "failed" : summary.pending > 0 ? "pending" : summary.total > 0 ? "passed" : "none";
+    const checkLabel = (summary = {}) => summary.failed > 0 ? `${summary.failed} failed` : summary.pending > 0 ? `${summary.pending} pending` : summary.total > 0 ? `${summary.passed} passed` : "No checks";
+
+    function statePanel(title, message, retry = false) {
+      return `<div class="state"><strong>${escapeHtml(title)}</strong><p>${escapeHtml(message)}</p>${retry ? '<button class="button" data-action="retry" type="button">Try again</button>' : ""}</div>`;
+    }
+
+    function renderPullRequests() {
+      const root = $("#pr-scroll");
+      if (state.loadingList) {
+        root.innerHTML = '<div class="skeleton"><span></span><span></span><span></span></div>';
+        return;
+      }
+      if (state.listError) {
+        root.innerHTML = statePanel("PR Workspace is not ready", state.listError, true);
+        return;
+      }
+      const query = state.query.trim().toLowerCase();
+      const values = state.pullRequests.filter((pr) =>
+        !query || pr.title.toLowerCase().includes(query) || String(pr.number).includes(query) || pr.author.toLowerCase().includes(query),
+      );
+      if (!values.length) {
+        root.innerHTML = statePanel("No pull requests", query ? "No pull request matches this filter." : "No open pull requests were returned by GitHub.");
+        return;
+      }
+      root.innerHTML = `<div class="pr-list">${values.map((pr) => {
+        const status = checkState(pr.checkSummary);
+        return `<button class="pr-row ${pr.number === state.selectedNumber ? "is-active" : ""}" data-pr="${pr.number}" type="button">
+          <span class="pr-title">${escapeHtml(pr.title)}</span>
+          <span class="pr-meta"><span>#${pr.number}</span><span>${escapeHtml(pr.author)}</span><span>${relativeTime(pr.updatedAt)}</span><span class="pr-state state-${pr.isDraft ? "draft" : status}">${pr.isDraft ? "Draft" : escapeHtml(checkLabel(pr.checkSummary))}</span></span>
+        </button>`;
+      }).join("")}</div>`;
+    }
+
+    function renderFiles() {
+      const root = $("#file-scroll");
+      const files = state.detail?.files || [];
+      $("#file-count").textContent = String(files.length);
+      if (state.loadingDetail) {
+        root.innerHTML = '<div class="skeleton"><span></span><span></span><span></span></div>';
+        return;
+      }
+      if (state.detailError) {
+        root.innerHTML = statePanel("Pull request unavailable", state.detailError);
+        return;
+      }
+      if (!state.detail) {
+        root.innerHTML = '<div class="state"><span>Select a pull request</span></div>';
+        return;
+      }
+      if (!files.length) {
+        root.innerHTML = statePanel("No changed files", "GitHub returned no changed files for this pull request.");
+        return;
+      }
+      root.innerHTML = `<div class="file-list">${files.map((file) => `<button class="file-row ${file.path === state.selectedPath ? "is-active" : ""}" data-path="${escapeHtml(file.path)}" type="button" title="${escapeHtml(file.path)}"><span class="file-path">${escapeHtml(file.path)}</span><span class="file-stat"><span class="add">+${file.additions}</span><span class="del">-${file.deletions}</span></span></button>`).join("")}</div>`;
+    }
+
+    function renderDetail() {
+      const detail = state.detail;
+      const root = $("#detail-head");
+      $("#open-github").disabled = !detail?.url;
+      $("#ask-pi").disabled = !detail;
+      if (!detail) {
+        root.innerHTML = state.detailError
+          ? `<h1>Pull request unavailable</h1><div class="detail-meta"><span>${escapeHtml(state.detailError)}</span></div>`
+          : '<h1>No pull request selected</h1><div class="detail-meta"><span>Choose a pull request to inspect its patch.</span></div>';
+        return;
+      }
+      const summary = detail.checkSummary || {};
+      const review = detail.reviewDecision ? detail.reviewDecision.toLowerCase().replaceAll("_", " ") : "review pending";
+      root.innerHTML = `<h1>#${detail.number} ${escapeHtml(detail.title)}</h1>
+        <div class="detail-meta"><span>by ${escapeHtml(detail.author)}</span><code>${escapeHtml(detail.headRefName)} → ${escapeHtml(detail.baseRefName)}</code><span>${detail.changedFiles} files</span><span class="add">+${detail.additions}</span><span class="del">-${detail.deletions}</span><span>${escapeHtml(review)}</span></div>
+        <div class="checks"><span class="check ${checkState(summary)}">${escapeHtml(checkLabel(summary))}</span>${detail.isDraft ? '<span class="check">Draft</span>' : ""}${detail.mergeable ? `<span class="check">${escapeHtml(detail.mergeable.toLowerCase())}</span>` : ""}</div>`;
+    }
+
+    function renderPatch(patch) {
+      const root = $("#diff-scroll");
+      if (state.loadingPatch) {
+        root.innerHTML = '<div class="skeleton"><span></span><span></span><span></span><span></span></div>';
+        return;
+      }
+      if (!patch) {
+        root.innerHTML = '<div class="diff-empty">Select a changed file</div>';
+        return;
+      }
+      let oldLine = null;
+      let newLine = null;
+      const rows = String(patch).split("\n").map((line) => {
+        let kind = "context";
+        let oldValue = "";
+        let newValue = "";
+        const hunk = line.match(/^@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@/);
+        if (hunk) {
+          kind = "hunk";
+          oldLine = Number(hunk[1]);
+          newLine = Number(hunk[2]);
+        } else if (line.startsWith("+") && !line.startsWith("+++")) {
+          kind = "added"; newValue = String(newLine++);
+        } else if (line.startsWith("-") && !line.startsWith("---")) {
+          kind = "deleted"; oldValue = String(oldLine++);
+        } else if (oldLine !== null && !line.startsWith("\\")) {
+          oldValue = String(oldLine++); newValue = String(newLine++);
+        } else if (/^(diff --git|index |--- |\+\+\+ )/.test(line)) {
+          kind = "meta";
+        }
+        return `<div class="diff-line ${kind}"><span class="ln">${oldValue}</span><span class="ln">${newValue}</span><span class="code">${escapeHtml(line || " ")}</span></div>`;
+      }).join("");
+      root.innerHTML = `<div class="diff">${rows}</div>`;
+    }
+
+    async function loadList() {
+      state.loadingList = true;
+      state.listError = null;
+      renderPullRequests();
+      try {
+        const result = await window.piDesktop.service.request("pr.list", { filter: state.filter });
+        state.environment = result.environment;
+        state.pullRequests = result.pullRequests || [];
+        $("#repo-label").textContent = result.environment.repository?.nameWithOwner || "GitHub repository";
+        const keep = state.pullRequests.some((pr) => pr.number === state.selectedNumber);
+        if (!keep) {
+          state.selectedNumber = null; state.detail = null; state.selectedPath = null; renderFiles(); renderDetail(); renderPatch(null);
+        }
+      } catch (error) {
+        state.listError = error instanceof Error ? error.message : String(error);
+        $("#repo-label").textContent = "GitHub CLI required";
+      } finally {
+        state.loadingList = false;
+        renderPullRequests();
+      }
+    }
+
+    async function selectPullRequest(number) {
+      if (state.loadingDetail || (state.selectedNumber === number && state.detail)) return;
+      state.selectedNumber = number;
+      state.detail = null;
+      state.detailError = null;
+      state.selectedPath = null;
+      state.loadingDetail = true;
+      renderPullRequests(); renderFiles(); renderDetail(); renderPatch(null);
+      try {
+        state.detail = await window.piDesktop.service.request("pr.detail", { number });
+        const first = state.detail.files?.[0];
+        state.selectedPath = first?.path || null;
+      } catch (error) {
+        state.detailError = error instanceof Error ? error.message : String(error);
+      } finally {
+        state.loadingDetail = false;
+        renderPullRequests(); renderFiles(); renderDetail();
+      }
+      if (state.selectedPath) await selectFile(state.selectedPath, true);
+    }
+
+    async function selectFile(path, force = false) {
+      if (!state.detail || state.loadingPatch || (!force && state.selectedPath === path)) return;
+      state.selectedPath = path;
+      state.loadingPatch = true;
+      renderFiles(); renderPatch(null);
+      try {
+        const result = await window.piDesktop.service.request("pr.patch", { number: state.detail.number, path });
+        state.loadingPatch = false;
+        renderPatch(result.patch || "");
+      } catch (error) {
+        state.loadingPatch = false;
+        $("#diff-scroll").innerHTML = statePanel("Patch unavailable", error instanceof Error ? error.message : String(error), false);
+      }
+    }
+
+    $("#search").addEventListener("input", (event) => { state.query = event.target.value; renderPullRequests(); });
+    $("#refresh").addEventListener("click", loadList);
+    $("#pr-scroll").addEventListener("click", (event) => {
+      const retry = event.target.closest("[data-action=retry]");
+      if (retry) { loadList(); return; }
+      const row = event.target.closest("[data-pr]");
+      if (row) selectPullRequest(Number(row.dataset.pr));
+    });
+    $("#file-scroll").addEventListener("click", (event) => {
+      const row = event.target.closest("[data-path]");
+      if (row) selectFile(row.dataset.path);
+    });
+    document.querySelectorAll("[data-filter]").forEach((button) => button.addEventListener("click", () => {
+      state.filter = button.dataset.filter;
+      document.querySelectorAll("[data-filter]").forEach((item) => item.classList.toggle("is-active", item === button));
+      loadList();
+    }));
+    $("#open-github").addEventListener("click", () => { if (state.detail?.url) window.piDesktop.openExternal(state.detail.url); });
+    $("#ask-pi").addEventListener("click", async () => {
+      if (!state.detail) return;
+      const pr = state.detail;
+      const prompt = `Review GitHub pull request #${pr.number} (${pr.title}) in the current repository. Use the authenticated gh CLI to inspect the PR, checks, commits, and diff. Focus on correctness, regressions, and missing tests. Report findings with file and line references. Do not modify code unless I explicitly ask.`;
+      $("#ask-pi").disabled = true;
+      try { await window.piDesktop.pi.prompt(prompt); await window.piDesktop.navigate("chat"); }
+      finally { $("#ask-pi").disabled = false; }
+    });
+
+    loadList();
+  </script>
+</body>
+</html>

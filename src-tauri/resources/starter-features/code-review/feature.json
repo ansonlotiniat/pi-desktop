@@ -1,0 +1,15 @@
+{
+  "apiVersion": 1,
+  "id": "code-review",
+  "name": "Code Review",
+  "version": "1.0.0",
+  "publisher": "Pi Desktop",
+  "description": "Review working, staged, or committed changes file by file, then send a focused task to Pi.",
+  "icon": "✓",
+  "order": 20,
+  "ui": { "entry": "ui/index.html" },
+  "service": {
+    "command": "node",
+    "args": ["service/main.mjs"]
+  }
+}

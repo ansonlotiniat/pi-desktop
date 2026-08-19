@@ -1,0 +1,12 @@
+{
+  "apiVersion": 1,
+  "id": "replace-feature-id",
+  "name": "Replace feature name",
+  "version": "0.1.0",
+  "publisher": "Local",
+  "description": "Replace with the feature's concrete user value.",
+  "icon": "+",
+  "order": 100,
+  "ui": { "entry": "ui/index.html" },
+  "service": { "command": "node", "args": ["service/main.mjs"] }
+}

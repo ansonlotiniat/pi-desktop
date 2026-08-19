@@ -1,0 +1,877 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" href="data:," />
+    <title>Git Changes</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", Inter, sans-serif;
+        color: #eceeea;
+        background: #0c0d0e;
+        font-synthesis: none;
+        text-rendering: optimizeLegibility;
+        -webkit-font-smoothing: antialiased;
+        --bg: #0c0d0e;
+        --panel: #101112;
+        --panel-raised: #151718;
+        --panel-hover: #1b1d1e;
+        --line: rgba(232, 236, 230, 0.12);
+        --line-strong: rgba(232, 236, 230, 0.2);
+        --text: #eceeea;
+        --text-soft: #c7cac5;
+        --muted: #929690;
+        --faint: #6f746e;
+        --accent: #8bc493;
+        --accent-bg: rgba(117, 173, 126, 0.17);
+        --accent-line: rgba(139, 196, 147, 0.5);
+        --add: #91cf9b;
+        --add-bg: rgba(62, 135, 75, 0.18);
+        --delete: #e49b96;
+        --delete-bg: rgba(153, 61, 57, 0.2);
+        --warning: #e2bf73;
+      }
+
+      * { box-sizing: border-box; }
+      html, body { width: 100%; height: 100%; }
+      body { margin: 0; overflow: hidden; background: var(--bg); }
+      button, input, textarea, select { font: inherit; }
+      button { color: inherit; }
+      [hidden] { display: none !important; }
+
+      .app {
+        display: grid;
+        width: 100%;
+        height: 100%;
+        grid-template-rows: 52px auto minmax(0, 1fr);
+      }
+
+      .topbar {
+        display: flex;
+        min-width: 0;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 8px 14px;
+        border-bottom: 1px solid var(--line);
+        background: var(--panel);
+      }
+
+      .scope-tabs,
+      .toolbar-actions,
+      .file-actions,
+      .summary,
+      .review-actions {
+        display: flex;
+        align-items: center;
+      }
+
+      .scope-tabs {
+        min-width: 0;
+        gap: 2px;
+        padding: 3px;
+        border: 1px solid var(--line);
+        border-radius: 9px;
+        background: #0d0f10;
+      }
+
+      .scope-button,
+      .toolbar-button,
+      .icon-button,
+      .tree-folder,
+      .tree-file {
+        border: 0;
+        background: transparent;
+        cursor: pointer;
+      }
+
+      .scope-button {
+        min-height: 30px;
+        padding: 0 11px;
+        border-radius: 6px;
+        color: var(--muted);
+        font-size: 13px;
+        font-weight: 650;
+      }
+
+      .scope-button:hover:not(.active) { color: var(--text-soft); background: var(--panel-hover); }
+      .scope-button.active { color: var(--text); background: #282b2b; box-shadow: inset 0 0 0 1px rgba(255,255,255,.035); }
+
+      .toolbar-actions { min-width: 0; gap: 8px; }
+      .summary { gap: 9px; color: var(--muted); font-size: 12px; font-weight: 600; white-space: nowrap; }
+      .summary strong { color: var(--text-soft); font-size: 13px; font-weight: 650; }
+      .addition { color: var(--add); }
+      .deletion { color: var(--delete); }
+
+      .toolbar-button {
+        min-height: 32px;
+        padding: 0 12px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--panel-raised);
+        color: var(--text-soft);
+        font-size: 13px;
+        font-weight: 650;
+      }
+
+      .toolbar-button:hover { border-color: var(--line-strong); background: var(--panel-hover); color: var(--text); }
+      .toolbar-button.primary { border-color: var(--accent-line); background: var(--accent-bg); color: #dff1e2; }
+      .toolbar-button:disabled { cursor: default; opacity: .5; }
+
+      .alert {
+        padding: 9px 14px;
+        border-bottom: 1px solid rgba(228, 155, 150, .25);
+        background: rgba(119, 45, 43, .22);
+        color: #efb7b2;
+        font-size: 13px;
+        font-weight: 550;
+      }
+
+      .workbench {
+        display: grid;
+        min-width: 0;
+        min-height: 0;
+        grid-template-columns: minmax(0, 1fr) 286px;
+      }
+
+      .diff-column {
+        display: grid;
+        min-width: 0;
+        min-height: 0;
+        grid-template-rows: 44px minmax(0, 1fr);
+      }
+
+      .filebar {
+        display: flex;
+        min-width: 0;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 0 13px 0 16px;
+        border-bottom: 1px solid var(--line);
+        background: var(--bg);
+      }
+
+      .file-identity { display: flex; min-width: 0; align-items: baseline; gap: 10px; }
+      #fileName { overflow: hidden; color: var(--text); font-size: 13px; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
+      #fileMeta { flex: 0 0 auto; color: var(--muted); font-size: 12px; font-weight: 550; }
+      .file-actions { gap: 3px; }
+
+      .icon-button {
+        min-width: 30px;
+        min-height: 30px;
+        padding: 0 8px;
+        border-radius: 6px;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 650;
+      }
+
+      .icon-button:hover, .icon-button.active { background: var(--panel-hover); color: var(--text-soft); }
+      .icon-button:disabled { cursor: default; opacity: .35; }
+
+      .diff-viewport {
+        min-width: 0;
+        min-height: 0;
+        overflow: auto;
+        background: #0b0c0d;
+        scrollbar-color: #3e4240 transparent;
+      }
+
+      .diff-table {
+        min-width: 100%;
+        width: max-content;
+        padding: 10px 0 48px;
+        color: #cfd2cd;
+        font: 13.2px/1.55 "SFMono-Regular", Menlo, Monaco, monospace;
+        font-variant-ligatures: none;
+      }
+
+      .diff-table.wrap { width: 100%; }
+      .diff-line {
+        display: grid;
+        min-height: 20px;
+        grid-template-columns: 48px 48px 20px minmax(max-content, 1fr);
+      }
+
+      .diff-table.wrap .diff-line { grid-template-columns: 48px 48px 20px minmax(0, 1fr); }
+      .line-number { padding: 0 9px 0 5px; color: #666b66; text-align: right; user-select: none; }
+      .line-marker { color: #777c77; text-align: center; user-select: none; }
+      .line-code { padding-right: 24px; white-space: pre; }
+      .diff-table.wrap .line-code { overflow-wrap: anywhere; white-space: pre-wrap; }
+      .diff-line.add { background: var(--add-bg); }
+      .diff-line.add .line-code, .diff-line.add .line-marker { color: #c9e8cf; }
+      .diff-line.delete { background: var(--delete-bg); }
+      .diff-line.delete .line-code, .diff-line.delete .line-marker { color: #f0c5c1; }
+      .diff-line.hunk { margin: 7px 0; background: rgba(63, 93, 108, .18); color: #9bc3d1; }
+      .diff-line.header { color: #abb0aa; font-weight: 650; }
+      .diff-line.meta { color: #7d827d; }
+
+      .empty-state {
+        display: grid;
+        min-height: 100%;
+        place-content: center;
+        justify-items: center;
+        gap: 7px;
+        padding: 36px;
+        color: var(--muted);
+        text-align: center;
+      }
+
+      .empty-state strong { color: var(--text-soft); font-size: 14px; font-weight: 650; }
+      .empty-state span { max-width: 430px; font-size: 13px; line-height: 1.5; }
+
+      .sidebar {
+        display: grid;
+        min-width: 0;
+        min-height: 0;
+        grid-template-rows: auto auto minmax(0, 1fr) auto;
+        border-left: 1px solid var(--line);
+        background: var(--panel);
+      }
+
+      .sidebar-heading {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 13px 7px;
+        color: var(--text-soft);
+        font-size: 13px;
+        font-weight: 650;
+      }
+
+      #fileCount { color: var(--muted); font-size: 12px; font-weight: 600; }
+      .filter-wrap { padding: 0 10px 9px; }
+      #filter {
+        width: 100%;
+        height: 32px;
+        padding: 0 10px;
+        border: 1px solid var(--line);
+        border-radius: 7px;
+        outline: none;
+        background: #0d0f10;
+        color: var(--text);
+        font-size: 13px;
+        font-weight: 500;
+      }
+
+      #filter::placeholder { color: var(--faint); }
+      #filter:focus { border-color: var(--accent-line); box-shadow: 0 0 0 2px rgba(139,196,147,.12); }
+      .tree { min-height: 0; overflow: auto; padding: 2px 6px 12px; scrollbar-color: #3e4240 transparent; }
+      .tree-folder, .tree-file { width: 100%; min-height: 30px; border-radius: 6px; text-align: left; }
+      .tree-folder {
+        display: grid;
+        grid-template-columns: 15px minmax(0, 1fr) auto;
+        align-items: center;
+        padding: 0 8px;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 650;
+      }
+
+      .tree-folder:hover { background: var(--panel-hover); color: var(--text-soft); }
+      .tree-caret { font-size: 14px; transform: translateY(-1px); }
+      .tree-count { color: var(--faint); font-size: 11px; }
+      .tree-file {
+        display: grid;
+        grid-template-columns: 18px minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 4px;
+        padding: 0 8px;
+        color: var(--text-soft);
+        font-size: 13px;
+        font-weight: 550;
+      }
+
+      .tree-file:hover:not(.selected) { background: rgba(255,255,255,.035); }
+      .tree-file.selected { background: var(--accent-bg); box-shadow: inset 2px 0 var(--accent); color: var(--text); }
+      .file-status { color: var(--warning); font-size: 11px; font-weight: 750; text-align: center; }
+      .file-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .file-stats { display: flex; gap: 5px; padding-left: 7px; font-size: 10.5px; font-weight: 650; }
+      .sidebar-footer {
+        display: flex;
+        min-height: 38px;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 7px 12px;
+        border-top: 1px solid var(--line);
+        color: var(--muted);
+        font-size: 11.5px;
+        font-weight: 550;
+      }
+
+      .sidebar-footer span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+      .review-panel {
+        position: absolute;
+        z-index: 10;
+        top: 58px;
+        right: 12px;
+        width: min(390px, calc(100% - 24px));
+        padding: 16px;
+        border: 1px solid var(--line-strong);
+        border-radius: 12px;
+        background: #17191a;
+        box-shadow: 0 18px 55px rgba(0,0,0,.42);
+        opacity: 0;
+        pointer-events: none;
+        transform: translateY(-6px);
+        transition: opacity 140ms ease, transform 140ms ease;
+      }
+
+      .review-panel.open { opacity: 1; pointer-events: auto; transform: translateY(0); }
+      .review-panel-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+      .review-panel h2 { margin: 0; color: var(--text); font-size: 16px; font-weight: 680; letter-spacing: -.01em; }
+      .review-panel p { margin: 5px 0 14px; color: var(--muted); font-size: 12.5px; line-height: 1.5; }
+      .review-field { display: grid; gap: 6px; margin-top: 11px; color: var(--text-soft); font-size: 12px; font-weight: 650; }
+      .review-field textarea, .review-field select {
+        width: 100%;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        outline: none;
+        background: #0f1112;
+        color: var(--text);
+        font-size: 13px;
+        font-weight: 500;
+      }
+
+      .review-field select { height: 34px; padding: 0 9px; }
+      .review-field textarea { min-height: 108px; resize: vertical; padding: 10px; line-height: 1.5; }
+      .review-field textarea:focus, .review-field select:focus { border-color: var(--accent-line); box-shadow: 0 0 0 2px rgba(139,196,147,.12); }
+      .review-actions { justify-content: flex-end; gap: 8px; margin-top: 13px; }
+      #reviewNotice { min-height: 18px; margin-top: 8px; color: var(--accent); font-size: 12px; }
+      #reviewNotice.error { color: var(--delete); }
+
+      button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+      }
+
+      @media (max-width: 820px) {
+        .summary { display: none; }
+        .workbench { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(260px, 1fr) minmax(190px, 40%); }
+        .sidebar { border-top: 1px solid var(--line); border-left: 0; }
+      }
+
+      @media (max-width: 560px) {
+        .topbar { gap: 8px; padding-inline: 8px; }
+        .scope-button { padding-inline: 8px; font-size: 12px; }
+        .toolbar-button { padding-inline: 9px; }
+        #refreshButton { display: none; }
+        .diff-line { grid-template-columns: 38px 38px 17px minmax(max-content, 1fr); }
+        .diff-table.wrap .diff-line { grid-template-columns: 38px 38px 17px minmax(0, 1fr); }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="app">
+      <header class="topbar">
+        <div class="scope-tabs" role="tablist" aria-label="Change scope">
+          <button class="scope-button active" data-scope="working" role="tab" aria-selected="true">Working</button>
+          <button class="scope-button" data-scope="staged" role="tab" aria-selected="false">Staged</button>
+          <button class="scope-button" data-scope="commit" role="tab" aria-selected="false">Last commit</button>
+        </div>
+        <div class="toolbar-actions">
+          <div class="summary" aria-live="polite">
+            <strong id="branch">Loading</strong>
+            <span id="totalFiles">0 files</span>
+            <span id="totalAdditions" class="addition">+0</span>
+            <span id="totalDeletions" class="deletion">-0</span>
+          </div>
+          <button id="refreshButton" class="toolbar-button" type="button">Refresh</button>
+          <button id="reviewButton" class="toolbar-button primary" type="button" hidden>Review with Pi</button>
+        </div>
+      </header>
+
+      <div id="alert" class="alert" role="alert" hidden></div>
+
+      <section class="workbench">
+        <div class="diff-column">
+          <header class="filebar">
+            <div class="file-identity">
+              <strong id="fileName">Select a changed file</strong>
+              <span id="fileMeta"></span>
+            </div>
+            <div class="file-actions">
+              <button id="previousFile" class="icon-button" type="button" aria-label="Previous file">Previous</button>
+              <button id="nextFile" class="icon-button" type="button" aria-label="Next file">Next</button>
+              <button id="wrapButton" class="icon-button" type="button" aria-pressed="false">Wrap</button>
+            </div>
+          </header>
+          <div id="diffViewport" class="diff-viewport" tabindex="0">
+            <div id="diffTable" class="diff-table"></div>
+          </div>
+        </div>
+
+        <aside class="sidebar" aria-label="Changed files">
+          <div class="sidebar-heading"><span>Files</span><span id="fileCount">0</span></div>
+          <div class="filter-wrap"><input id="filter" type="search" placeholder="Filter files" autocomplete="off" spellcheck="false" /></div>
+          <div id="tree" class="tree" role="tree"></div>
+          <footer class="sidebar-footer"><span id="repository">No repository</span><span id="scopeLabel">Working</span></footer>
+        </aside>
+      </section>
+    </main>
+
+    <section id="reviewPanel" class="review-panel" aria-labelledby="reviewHeading" aria-hidden="true">
+      <div class="review-panel-header">
+        <div><h2 id="reviewHeading">Review changes</h2><p>Pi will review this workspace in the current conversation.</p></div>
+        <button id="closeReview" class="icon-button" type="button" aria-label="Close review setup">Close</button>
+      </div>
+      <label class="review-field">Review target
+        <select id="reviewTarget"><option value="all">All files in this scope</option><option value="current">Current file only</option></select>
+      </label>
+      <label class="review-field">Instructions
+        <textarea id="reviewInstructions">Prioritize correctness bugs, regressions, and missing focused tests. Report concrete findings first with file and line references. Keep the summary short.</textarea>
+      </label>
+      <div id="reviewNotice" role="status"></div>
+      <div class="review-actions">
+        <button id="cancelReview" class="toolbar-button" type="button">Cancel</button>
+        <button id="startReview" class="toolbar-button primary" type="button">Start review</button>
+      </div>
+    </section>
+
+    <script>
+      const elements = {
+        alert: document.querySelector("#alert"),
+        branch: document.querySelector("#branch"),
+        totalFiles: document.querySelector("#totalFiles"),
+        totalAdditions: document.querySelector("#totalAdditions"),
+        totalDeletions: document.querySelector("#totalDeletions"),
+        refresh: document.querySelector("#refreshButton"),
+        review: document.querySelector("#reviewButton"),
+        fileName: document.querySelector("#fileName"),
+        fileMeta: document.querySelector("#fileMeta"),
+        previous: document.querySelector("#previousFile"),
+        next: document.querySelector("#nextFile"),
+        wrap: document.querySelector("#wrapButton"),
+        viewport: document.querySelector("#diffViewport"),
+        diff: document.querySelector("#diffTable"),
+        filter: document.querySelector("#filter"),
+        tree: document.querySelector("#tree"),
+        fileCount: document.querySelector("#fileCount"),
+        repository: document.querySelector("#repository"),
+        scopeLabel: document.querySelector("#scopeLabel"),
+        reviewPanel: document.querySelector("#reviewPanel"),
+        closeReview: document.querySelector("#closeReview"),
+        cancelReview: document.querySelector("#cancelReview"),
+        reviewTarget: document.querySelector("#reviewTarget"),
+        reviewInstructions: document.querySelector("#reviewInstructions"),
+        reviewNotice: document.querySelector("#reviewNotice"),
+        startReview: document.querySelector("#startReview"),
+      };
+
+      const labels = { working: "Working", staged: "Staged", commit: "Last commit" };
+      const state = {
+        context: null,
+        isReview: false,
+        scope: "working",
+        snapshot: null,
+        selectedPath: null,
+        collapsed: new Set(),
+        requestSequence: 0,
+        fileSequence: 0,
+        wrap: false,
+      };
+
+      function messageOf(error) {
+        return error instanceof Error ? error.message : String(error);
+      }
+
+      function showAlert(message) {
+        elements.alert.textContent = message;
+        elements.alert.hidden = !message;
+      }
+
+      function setBusy(busy) {
+        elements.refresh.disabled = busy;
+        document.querySelectorAll(".scope-button").forEach((button) => { button.disabled = busy; });
+      }
+
+      function emptyState(title, detail) {
+        elements.diff.replaceChildren();
+        const view = document.createElement("div");
+        view.className = "empty-state";
+        const strong = document.createElement("strong");
+        strong.textContent = title;
+        const span = document.createElement("span");
+        span.textContent = detail;
+        view.append(strong, span);
+        elements.diff.append(view);
+      }
+
+      function pathName(path) {
+        const parts = path.split("/");
+        return parts.at(-1) || path;
+      }
+
+      function visibleFiles() {
+        const query = elements.filter.value.trim().toLowerCase();
+        const files = state.snapshot?.files || [];
+        return query ? files.filter((file) => file.path.toLowerCase().includes(query)) : files;
+      }
+
+      function makeTree(files) {
+        const root = { folders: new Map(), files: [] };
+        for (const file of files) {
+          const parts = file.path.split("/");
+          let folder = root;
+          for (const part of parts.slice(0, -1)) {
+            if (!folder.folders.has(part)) folder.folders.set(part, { folders: new Map(), files: [] });
+            folder = folder.folders.get(part);
+          }
+          folder.files.push(file);
+        }
+        return root;
+      }
+
+      function countNode(node) {
+        let count = node.files.length;
+        node.folders.forEach((child) => { count += countNode(child); });
+        return count;
+      }
+
+      function selectFile(path, focus = false) {
+        if (state.selectedPath === path && !focus) return;
+        state.selectedPath = path;
+        renderTree();
+        void loadSelectedFile();
+        if (focus) {
+          requestAnimationFrame(() => elements.tree.querySelector(`[data-path="${CSS.escape(path)}"]`)?.focus());
+        }
+      }
+
+      function renderNode(node, parent, prefix, depth, filtering) {
+        const folders = [...node.folders.entries()].sort(([left], [right]) => left.localeCompare(right));
+        for (const [name, child] of folders) {
+          const folderPath = prefix ? `${prefix}/${name}` : name;
+          const collapsed = !filtering && state.collapsed.has(folderPath);
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = "tree-folder";
+          button.style.paddingLeft = `${8 + depth * 13}px`;
+          button.setAttribute("role", "treeitem");
+          button.setAttribute("aria-expanded", String(!collapsed));
+          const caret = document.createElement("span");
+          caret.className = "tree-caret";
+          caret.textContent = collapsed ? "›" : "⌄";
+          const label = document.createElement("span");
+          label.className = "file-label";
+          label.textContent = name;
+          const count = document.createElement("span");
+          count.className = "tree-count";
+          count.textContent = String(countNode(child));
+          button.append(caret, label, count);
+          button.addEventListener("click", () => {
+            if (state.collapsed.has(folderPath)) state.collapsed.delete(folderPath);
+            else state.collapsed.add(folderPath);
+            renderTree();
+          });
+          parent.append(button);
+          if (!collapsed) renderNode(child, parent, folderPath, depth + 1, filtering);
+        }
+
+        for (const file of node.files.sort((left, right) => left.path.localeCompare(right.path))) {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = `tree-file${file.path === state.selectedPath ? " selected" : ""}`;
+          button.style.paddingLeft = `${8 + depth * 13}px`;
+          button.dataset.path = file.path;
+          button.setAttribute("role", "treeitem");
+          button.setAttribute("aria-selected", String(file.path === state.selectedPath));
+          const status = document.createElement("span");
+          status.className = "file-status";
+          status.textContent = file.status;
+          const label = document.createElement("span");
+          label.className = "file-label";
+          label.textContent = pathName(file.path);
+          label.title = file.path;
+          const stats = document.createElement("span");
+          stats.className = "file-stats";
+          if (file.binary) {
+            stats.textContent = "BIN";
+          } else {
+            const added = document.createElement("span");
+            added.className = "addition";
+            added.textContent = `+${file.additions ?? 0}`;
+            const deleted = document.createElement("span");
+            deleted.className = "deletion";
+            deleted.textContent = `-${file.deletions ?? 0}`;
+            stats.append(added, deleted);
+          }
+          button.append(status, label, stats);
+          button.addEventListener("click", () => selectFile(file.path));
+          button.addEventListener("keydown", onFileKeyDown);
+          parent.append(button);
+        }
+      }
+
+      function renderTree() {
+        const files = visibleFiles();
+        const filtering = elements.filter.value.trim() !== "";
+        elements.tree.replaceChildren();
+        elements.fileCount.textContent = filtering ? `${files.length} of ${state.snapshot?.files.length || 0}` : String(files.length);
+        renderNode(makeTree(files), elements.tree, "", 0, filtering);
+        if (!files.length) {
+          const empty = document.createElement("div");
+          empty.className = "empty-state";
+          const detail = document.createElement("span");
+          detail.textContent = filtering ? "No file matches this filter." : "No files in this scope.";
+          empty.append(detail);
+          elements.tree.append(empty);
+        }
+      }
+
+      function onFileKeyDown(event) {
+        if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
+        event.preventDefault();
+        const files = visibleFiles();
+        const index = files.findIndex((file) => file.path === state.selectedPath);
+        const delta = event.key === "ArrowDown" ? 1 : -1;
+        const next = Math.max(0, Math.min(files.length - 1, index + delta));
+        if (files[next]) selectFile(files[next].path, true);
+      }
+
+      function appendDiffLine(kind, oldNumber, newNumber, marker, content) {
+        const row = document.createElement("div");
+        row.className = `diff-line ${kind}`;
+        const oldCell = document.createElement("span");
+        oldCell.className = "line-number";
+        oldCell.textContent = oldNumber === null ? "" : String(oldNumber);
+        const newCell = document.createElement("span");
+        newCell.className = "line-number";
+        newCell.textContent = newNumber === null ? "" : String(newNumber);
+        const markerCell = document.createElement("span");
+        markerCell.className = "line-marker";
+        markerCell.textContent = marker;
+        const code = document.createElement("span");
+        code.className = "line-code";
+        code.textContent = content;
+        row.append(oldCell, newCell, markerCell, code);
+        elements.diff.append(row);
+      }
+
+      function renderDiff(text) {
+        elements.diff.replaceChildren();
+        if (!text) {
+          emptyState("No textual diff", "This file may be binary or no longer contains changes in this scope.");
+          return;
+        }
+        let oldLine = null;
+        let newLine = null;
+        const lines = text.split("\n");
+        const renderLimit = 12000;
+        for (const line of lines.slice(0, renderLimit)) {
+          const hunk = line.match(/^@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@(.*)$/);
+          if (hunk) {
+            oldLine = Number(hunk[1]);
+            newLine = Number(hunk[2]);
+            appendDiffLine("hunk", null, null, "", line);
+          } else if (line.startsWith("diff --git")) {
+            appendDiffLine("header", null, null, "", line);
+          } else if (line.startsWith("+++ ") || line.startsWith("--- ") || line.startsWith("index ") || line.startsWith("new file ") || line.startsWith("deleted file ") || line.startsWith("Binary file")) {
+            appendDiffLine("meta", null, null, "", line);
+          } else if (line.startsWith("+") && oldLine !== null) {
+            appendDiffLine("add", null, newLine, "+", line.slice(1));
+            newLine += 1;
+          } else if (line.startsWith("-") && oldLine !== null) {
+            appendDiffLine("delete", oldLine, null, "-", line.slice(1));
+            oldLine += 1;
+          } else if (line.startsWith(" ") && oldLine !== null) {
+            appendDiffLine("context", oldLine, newLine, "", line.slice(1));
+            oldLine += 1;
+            newLine += 1;
+          } else {
+            appendDiffLine("meta", null, null, "", line);
+          }
+        }
+        if (lines.length > renderLimit) appendDiffLine("meta", null, null, "", `[Viewer stopped after ${renderLimit.toLocaleString()} lines]`);
+      }
+
+      function selectedFile() {
+        return state.snapshot?.files.find((file) => file.path === state.selectedPath) || null;
+      }
+
+      function updateFileNavigation() {
+        const files = visibleFiles();
+        const index = files.findIndex((file) => file.path === state.selectedPath);
+        elements.previous.disabled = index <= 0;
+        elements.next.disabled = index < 0 || index >= files.length - 1;
+      }
+
+      async function loadSelectedFile() {
+        const file = selectedFile();
+        updateFileNavigation();
+        if (!file) {
+          elements.fileName.textContent = "Select a changed file";
+          elements.fileMeta.textContent = "";
+          emptyState("No changed file selected", "Choose a file from the list to inspect its diff.");
+          return;
+        }
+        const sequence = ++state.fileSequence;
+        elements.fileName.textContent = file.path;
+        elements.fileMeta.textContent = file.binary ? "Binary" : `+${file.additions ?? 0}  -${file.deletions ?? 0}`;
+        emptyState("Loading diff", file.path);
+        try {
+          const result = await window.piDesktop.service.request("repository.fileDiff", { scope: state.scope, path: file.path });
+          if (sequence !== state.fileSequence) return;
+          renderDiff(result.diff);
+          elements.viewport.scrollTo({ top: 0, left: 0 });
+        } catch (error) {
+          if (sequence !== state.fileSequence) return;
+          emptyState("Could not load this diff", messageOf(error));
+        }
+      }
+
+      function updateSnapshotChrome() {
+        const snapshot = state.snapshot;
+        elements.branch.textContent = snapshot?.branch || "No repository";
+        elements.totalFiles.textContent = `${snapshot?.totals.files || 0} ${snapshot?.totals.files === 1 ? "file" : "files"}`;
+        elements.totalAdditions.textContent = `+${snapshot?.totals.additions || 0}`;
+        elements.totalDeletions.textContent = `-${snapshot?.totals.deletions || 0}`;
+        elements.repository.textContent = snapshot?.repositoryRoot || "No repository";
+        elements.repository.title = snapshot?.repositoryRoot || "";
+        elements.scopeLabel.textContent = labels[state.scope];
+        elements.review.disabled = !snapshot?.files.length;
+      }
+
+      async function loadSnapshot() {
+        const sequence = ++state.requestSequence;
+        setBusy(true);
+        showAlert("");
+        emptyState("Loading changes", labels[state.scope]);
+        try {
+          const snapshot = await window.piDesktop.service.request("repository.snapshot", { scope: state.scope });
+          if (sequence !== state.requestSequence) return;
+          state.snapshot = snapshot;
+          if (!snapshot.files.some((file) => file.path === state.selectedPath)) {
+            state.selectedPath = snapshot.files[0]?.path || null;
+          }
+          updateSnapshotChrome();
+          renderTree();
+          if (snapshot.truncated) showAlert("Showing the first 500 changed files.");
+          await loadSelectedFile();
+        } catch (error) {
+          if (sequence !== state.requestSequence) return;
+          state.snapshot = null;
+          state.selectedPath = null;
+          updateSnapshotChrome();
+          renderTree();
+          showAlert(messageOf(error));
+          emptyState("Changes unavailable", "Open a Git workspace, then refresh this plugin.");
+        } finally {
+          if (sequence === state.requestSequence) setBusy(false);
+        }
+      }
+
+      function changeScope(scope) {
+        if (scope === state.scope) return;
+        state.scope = scope;
+        state.selectedPath = null;
+        document.querySelectorAll(".scope-button").forEach((button) => {
+          const active = button.dataset.scope === scope;
+          button.classList.toggle("active", active);
+          button.setAttribute("aria-selected", String(active));
+        });
+        void loadSnapshot();
+      }
+
+      function moveSelection(delta) {
+        const files = visibleFiles();
+        const index = files.findIndex((file) => file.path === state.selectedPath);
+        const next = Math.max(0, Math.min(files.length - 1, index + delta));
+        if (files[next]) selectFile(files[next].path, true);
+      }
+
+      function setReviewOpen(open) {
+        elements.reviewPanel.classList.toggle("open", open);
+        elements.reviewPanel.setAttribute("aria-hidden", String(!open));
+        if (open) {
+          elements.reviewNotice.textContent = "";
+          elements.reviewNotice.className = "";
+          requestAnimationFrame(() => elements.reviewTarget.focus());
+        }
+      }
+
+      async function startReview() {
+        const file = selectedFile();
+        if (!state.snapshot?.files.length) return;
+        elements.startReview.disabled = true;
+        elements.reviewNotice.className = "";
+        elements.reviewNotice.textContent = "Starting review in Pi";
+        const currentOnly = elements.reviewTarget.value === "current" && file;
+        const target = currentOnly
+          ? `Only review this file: ${file.path}`
+          : `Review all ${state.snapshot.files.length} files in this scope.`;
+        const message = [
+          `Review the ${labels[state.scope].toLowerCase()} changes in ${state.snapshot.repositoryRoot}.`,
+          target,
+          elements.reviewInstructions.value.trim(),
+          "Inspect the repository directly. Report concrete findings first with file and line references.",
+        ].filter(Boolean).join("\n\n");
+        try {
+          await window.piDesktop.storage.set("review.instructions", elements.reviewInstructions.value);
+          await window.piDesktop.pi.prompt(message);
+          elements.reviewNotice.textContent = "Review started. Opening the Pi conversation.";
+          await window.piDesktop.navigate("chat");
+        } catch (error) {
+          elements.reviewNotice.className = "error";
+          elements.reviewNotice.textContent = messageOf(error);
+        } finally {
+          elements.startReview.disabled = false;
+        }
+      }
+
+      document.querySelectorAll(".scope-button").forEach((button) => button.addEventListener("click", () => changeScope(button.dataset.scope)));
+      elements.refresh.addEventListener("click", loadSnapshot);
+      elements.filter.addEventListener("input", () => {
+        const files = visibleFiles();
+        if (files.length && !files.some((file) => file.path === state.selectedPath)) {
+          selectFile(files[0].path);
+        } else {
+          renderTree();
+          updateFileNavigation();
+        }
+      });
+      elements.previous.addEventListener("click", () => moveSelection(-1));
+      elements.next.addEventListener("click", () => moveSelection(1));
+      elements.wrap.addEventListener("click", () => {
+        state.wrap = !state.wrap;
+        elements.diff.classList.toggle("wrap", state.wrap);
+        elements.wrap.classList.toggle("active", state.wrap);
+        elements.wrap.setAttribute("aria-pressed", String(state.wrap));
+      });
+      elements.review.addEventListener("click", () => setReviewOpen(true));
+      elements.closeReview.addEventListener("click", () => setReviewOpen(false));
+      elements.cancelReview.addEventListener("click", () => setReviewOpen(false));
+      elements.startReview.addEventListener("click", startReview);
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape" && elements.reviewPanel.classList.contains("open")) setReviewOpen(false);
+      });
+
+      async function initialize() {
+        try {
+          state.context = await window.piDesktop.getContext();
+          state.isReview = state.context.feature.id === "code-review";
+          document.title = state.isReview ? "Code Review" : "Code Diff";
+          elements.review.hidden = !state.isReview;
+          if (state.isReview) {
+            const saved = await window.piDesktop.storage.get("review.instructions");
+            if (typeof saved === "string" && saved.trim()) elements.reviewInstructions.value = saved;
+          }
+        } catch (error) {
+          showAlert(messageOf(error));
+        }
+        await loadSnapshot();
+      }
+
+      void initialize();
+    </script>
+  </body>
+</html>

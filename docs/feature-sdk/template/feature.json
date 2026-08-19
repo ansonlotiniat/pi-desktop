@@ -1,0 +1,17 @@
+{
+  "apiVersion": 1,
+  "id": "starter-feature",
+  "name": "Starter feature",
+  "version": "0.1.0",
+  "publisher": "Local",
+  "description": "An uninstalled full feature-app scaffold.",
+  "icon": "+",
+  "order": 100,
+  "ui": {
+    "entry": "ui/index.html"
+  },
+  "service": {
+    "command": "node",
+    "args": ["service/main.mjs"]
+  }
+}
